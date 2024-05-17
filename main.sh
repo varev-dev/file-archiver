@@ -36,6 +36,11 @@ while true; do
         echo "${selected_files[1]}"
     else
         echo "You selected Extract."
-        # @TO-DO
+        local file=$(zenity --file-selection --separator="$FILE_SEPARATOR" --title="$TITLE")
+        if [ $? == 0 ]; then
+            echo "Selected archive: ${file}"
+        else
+            zenity --info --text="$NO_FILES" --title="$TITLE"
+        fi  
     fi
 done
