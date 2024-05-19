@@ -4,9 +4,17 @@
 TITLE="File Archiver"
 NO_FILES="No files were selected"
 FILE_SEPARATOR=","
+MAX_COMPRESSION_ZIP=9
+MAX_COMPRESSION_RAR=5
+
 declare -a OPTIONS=("Archive" "Extract")
-declare -a ARCHIVE_OPTIONS=("ZIP" "RAR" "TAR" "7Z")
-declare -a selected_files=()
+declare -a ARCHIVE_OPTIONS=("ZIP" "RAR" "TAR")
+
+type=ARCHIVE_OPTIONS[0]
+declare -a files=()
+password=""
+compression=0
+name=""
 
 function select_items() {
     local locFiles
@@ -16,17 +24,46 @@ function select_items() {
         IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$locFiles"
         echo "Selected files:"
         for file in "${fileArray[@]}"; do
-            selected_files+=($file)
+            files+=($file)
             echo "$file"
-            selected_files+=("$file")
         done
     else
         zenity --info --text="$NO_FILES" --title="$TITLE"
     fi  
 }
 
+function select_type() {
+    type=$(zenity --text "Choose archive type" --list --column=Menu "${ARCHIVE_OPTIONS[@]}" --title="$TITLE");
+}
+
+function password_setup() {
+    if zenity --question --title="$TITLE" --text="Do you want to create password for archive?"; then
+        password=$(zenity --password --title="$TITLE" --text="Enter password for archive")
+        echo "Password: YES (${password})"
+    fi
+}
+
+function metadata_cleanup() {
+    if zenity --question --title="$TITLE" --text="Do you want to clear metadata from the archive?"; then
+        echo "Metadata: REMOVED"
+    fi
+}
+
+function compression_level() {
+    if zenity --question --title="$TITLE" --text="Do you want custom compression level?"; then
+        local max_compression=0
+        if [ "$type" == "RAR" ]; then
+            max_compression=MAX_COMPRESSION_RAR
+        elif [ "$type" == "ZIP" ]; then
+            max_compression=MAX_COMPRESSION_ZIP
+        fi
+        compression=$(zenity --scale --title="$TITLE" --text="$TEXT" --min-value=0 --max-value=max_compression --value=0)
+        echo "Compression: CUSTOM ${compression}"
+    fi
+}
+
 function archive_items() {
-    echo "${selected_files[0]}"
+    echo "${files[0]}"
 }
 
 while true; do
@@ -39,6 +76,12 @@ while true; do
     if [ "$selection" == "Archive" ]; then
         echo "You selected Archive."
         select_items
+        select_type
+        metadata_cleanup
+        if [ "$type" != "TAR" ]; then
+            compression_level
+            password_setup
+        fi
         archive_items
     else
         echo "You selected Extract."
