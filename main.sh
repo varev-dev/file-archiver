@@ -5,22 +5,28 @@ TITLE="File Archiver"
 NO_FILES="No files were selected"
 FILE_SEPARATOR=","
 declare -a OPTIONS=("Archive" "Extract")
+declare -a ARCHIVE_OPTIONS=("ZIP" "RAR" "TAR" "7Z")
 declare -a selected_files=()
 
 function select_items() {
-    local files
-    files=$(zenity --file-selection --multiple --separator="$FILE_SEPARATOR" --title="$TITLE")
+    local locFiles
+    locFiles=$(zenity --file-selection --multiple --separator="$FILE_SEPARATOR" --title="$TITLE")
 
     if [ $? == 0 ]; then
-        IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$files"
+        IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$locFiles"
         echo "Selected files:"
         for file in "${fileArray[@]}"; do
+            selected_files+=($file)
             echo "$file"
             selected_files+=("$file")
         done
     else
         zenity --info --text="$NO_FILES" --title="$TITLE"
     fi  
+}
+
+function archive_items() {
+    echo "${selected_files[0]}"
 }
 
 while true; do
@@ -33,7 +39,7 @@ while true; do
     if [ "$selection" == "Archive" ]; then
         echo "You selected Archive."
         select_items
-        echo "${selected_files[1]}"
+        archive_items
     else
         echo "You selected Extract."
         local file=$(zenity --file-selection --separator="$FILE_SEPARATOR" --title="$TITLE")
