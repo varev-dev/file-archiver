@@ -19,11 +19,12 @@ readonly MAX_COMPRESSION_TAR=9
 readonly MIN_LENGTH=3
 
 declare -a OPTIONS=("Archive" "Extract")
-declare -a ARCHIVE_OPTIONS=("ZIP" "RAR" "TAR")
+declare -a ARCHIVE_OPTIONS=("ZIP" "RAR" "GZ")
 
 type=ARCHIVE_OPTIONS[0]
 files=""
 password=""
+target=""
 compression=0
 name=""
 
@@ -31,23 +32,23 @@ function select_items() {
     local locFiles
     locFiles=$(zenity --file-selection --multiple --separator="$FILE_SEPARATOR" --title="$TITLE")
 
-    if [ $? == 0 ]; then
-        IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$locFiles"
-        files=$locFiles
-        echo "Selected files:"
-        for file in "${fileArray[@]}"; do
-            echo "$file"
-        done
-    else
+    if [ $? -ne 0 ]; then
         zenity --info --text="$NO_FILES" --title="$TITLE"
         exit
-    fi  
+    fi
+
+    IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$locFiles"
+    files=$locFiles
+    echo "Selected files:"
+    for file in "${fileArray[@]}"; do
+        echo "$file"
+    done
 }
 
 function select_type() {
     type=$(zenity --text "Choose archive type" --list --column=Menu "${ARCHIVE_OPTIONS[@]}" --title="$TITLE");
 
-    if [ $? != 0 ]; then
+    if [ $? -ne 0 ]; then
         exit
     fi
 
@@ -58,7 +59,7 @@ function password_setup() {
     if zenity --question --title="$TITLE" --text="Do you want to create password for archive?"; then
         password=$(zenity --password --title="$TITLE" --text="Enter password for archive")
 
-        if [ $? != 0 ]; then
+        if [ $? -ne 0 ]; then
             exit
         fi
 
@@ -85,13 +86,13 @@ function compression_level() {
             max_compression=${MAX_COMPRESSION_RAR}
         elif [ "$type" == "ZIP" ]; then
             max_compression=${MAX_COMPRESSION_ZIP}
-        elif [ "$type" == "TAR" ]; then
-            max_compression=${MAX_COMPRESSION_TAR}
+        elif [ "$type" == "GZ" ]; then
+            max_compression=${MAX_COMPRESSION_GZ}
         fi
 
         compression=$(zenity --scale --title="$TITLE" --text="Compression level for $type archive" --value=0 --min-value=0 --max-value=${max_compression})
 
-        if [ $? != 0 ]; then
+        if [ $? -ne 0 ]; then
             exit
         fi
         echo "Compression: CUSTOM ${compression}"
@@ -101,7 +102,7 @@ function compression_level() {
 function name_setup() {
     name=$(zenity --entry --title="$TITLE" --text="Enter archive name:")
 
-    if [ $? != 0 ]; then
+    if [ $? -ne 0 ]; then
         exit
     fi;
 
@@ -119,7 +120,7 @@ function archive_items() {
         local command=""
         IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$files"
         case "$type" in
-            TAR)
+            GZ)
                 command="tar -cf ${name}.tar.gz"
                 for file in "${fileArray[@]}"; do
                     command+=" -C $(dirname "$file") $(basename "$file")"
@@ -159,7 +160,7 @@ function archive_items() {
     fi
 }
 
-function extract_archive() {
+function select_archive() {
     files=$(zenity --file-selection --title="$TITLE")
 
     if [ $? -ne 0 ]; then
@@ -169,18 +170,46 @@ function extract_archive() {
     extension="${files##*.}"
     extension="${extension^^}"
 
-    for option in "${ARCHIVE_OPTIONS}"; do
-        if [ "$extension" == "$option" ]; then
+    found=false
+    for option in "${ARCHIVE_OPTIONS[@]}"; do
+        echo "$option $extension"
+        if [ "$option" == "$extension" ]; then
             found=true
-            type="$option"
+            type=$option
             break
         fi
     done
 
-    if [ "$found" != true ]; then
-        echo "Unsupported file type."
+    if [ "$found" == true ]; then
+        echo "Selected: ${files}"
+    else
+        echo "Unsupported file type"
         exit
     fi
+}
+
+function select_target() {
+    target=$(zenity --file-selection --directory --title="$TITLE" --text="Choose target directory")
+
+    if [ $? -ne 0 ]; then
+        exit
+    fi
+}
+
+function extract_archive() {
+    case "$type" in
+        "ZIP")
+            command="unzip -q \"$files\" -d \"$target\""
+            ;;
+        "RAR")
+            command="unrar x -o+ \"$files\" \"$target\""
+            ;;
+        "GZ")
+            command="tar xf \"$files\" -C \"$target\""
+            ;;
+    esac
+
+    eval "$command"
 }
 
 while true; do
@@ -195,7 +224,7 @@ while true; do
         select_items
         select_type
         metadata_cleanup
-        if [ "$type" != "TAR" ]; then
+        if [ "$type" != "GZ" ]; then
             compression_level
             password_setup
         fi
@@ -204,6 +233,8 @@ while true; do
         exit
     else
         echo "You selected Extract."
+        select_archive
+        select_target
         extract_archive
         exit
     fi
