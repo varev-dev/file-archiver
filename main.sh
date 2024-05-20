@@ -152,10 +152,33 @@ function archive_items() {
                 done
                 ;;
         esac
-        echo "$command"
         eval "$command"
     else
         echo "Declined creating archive";
+        exit
+    fi
+}
+
+function extract_archive() {
+    files=$(zenity --file-selection --title="$TITLE")
+
+    if [ $? -ne 0 ]; then
+        exit
+    fi
+
+    extension="${files##*.}"
+    extension="${extension^^}"
+
+    for option in "${ARCHIVE_OPTIONS}"; do
+        if [ "$extension" == "$option" ]; then
+            found=true
+            type="$option"
+            break
+        fi
+    done
+
+    if [ "$found" != true ]; then
+        echo "Unsupported file type."
         exit
     fi
 }
@@ -181,12 +204,7 @@ while true; do
         exit
     else
         echo "You selected Extract."
-        local file=$(zenity --file-selection --separator="$FILE_SEPARATOR" --title="$TITLE")
-        if [ $? == 0 ]; then
-            echo "Selected archive: ${file}"
-        else
-            zenity --info --text="$NO_FILES" --title="$TITLE"
-        fi
+        extract_archive
         exit
     fi
 done
