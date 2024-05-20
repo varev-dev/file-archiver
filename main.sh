@@ -2,13 +2,50 @@
 # Author            : Kacper Doga [@varev-dev]
 # Created On        : 17.05.2024
 # Last Modified By  : Kacper Doga [@varev-dev]
-# Last Modified     : 20.05.2024
-# Version           : 1.0.1
+# Last Modified     : 21.05.2024
+# Version           : 1.0.2
 #
 # Description       : Simple archive setuper / archive extractor created using Zenity widgets and Bash language
 #
 # Licensed under GPL (/usr/share/common-licenses/GPL for more details
 # or contact the Free Software Foundation for a copy
+
+function help() {
+    echo "Usage: $(basename "$0") [options]"
+    echo "Options:"
+    echo "      -h  Print help"
+    echo "      -v  Print version info"
+    exit 0
+}
+
+function version() {
+    local version_line=$(grep -m 1 "^# Version " "$0")
+    local version=$(echo "$version_line" | awk -F '[\t ]*' '/# Version/{print $NF}')
+    echo "Version: $version"
+    exit 0
+}
+
+while getopts ":hv" opt; do
+    case ${opt} in
+        h )
+            help
+            ;;
+        v )
+            version
+            ;;
+        \? )
+            echo "Unsupported option: -$OPTARG" >&2
+            echo "Use option -h, to print help." >&2
+            exit 1
+            ;;
+        : )
+            echo "Option -$OPTARG require argument." >&2
+            echo "Use option -h, to print help." >&2
+            exit 1
+            ;;
+    esac
+done
+
 
 readonly TITLE="File Archiver"
 readonly NO_FILES="No files were selected"
@@ -211,42 +248,6 @@ function extract_archive() {
 
     eval "$command"
 }
-
-function help() {
-    echo "Usage: $(basename "$0") [options]"
-    echo "Options:"
-    echo "      -h  Print help"
-    echo "      -v  Print version info"
-    exit 0
-}
-
-function version() {
-    local version_line=$(grep -m 1 "^# Version " "$0")
-    local version=$(echo "$version_line" | awk -F '[\t ]*' '/# Version/{print $NF}')
-    echo "Version: $version"
-    exit 0
-}
-
-while getopts ":hv" opt; do
-    case ${opt} in
-        h )
-            help
-            ;;
-        v )
-            version
-            ;;
-        \? )
-            echo "Unsupported option: -$OPTARG" >&2
-            echo "Use option -h, to print help." >&2
-            exit 1
-            ;;
-        : )
-            echo "Option -$OPTARG require argument." >&2
-            echo "Use option -h, to print help." >&2
-            exit 1
-            ;;
-    esac
-done
 
 while true; do
     selection=$(zenity --text "Choose option" --list --column=Menu "${OPTIONS[@]}" --title="$TITLE");
