@@ -10,19 +10,19 @@
 # Licensed under GPL (/usr/share/common-licenses/GPL for more details
 # or contact the Free Software Foundation for a copy
 
-
-TITLE="File Archiver"
-NO_FILES="No files were selected"
-FILE_SEPARATOR=","
-MAX_COMPRESSION_ZIP=9
-MAX_COMPRESSION_RAR=5
-MIN_LENGTH=3
+readonly TITLE="File Archiver"
+readonly NO_FILES="No files were selected"
+readonly FILE_SEPARATOR=","
+readonly MAX_COMPRESSION_ZIP=9
+readonly MAX_COMPRESSION_RAR=5
+readonly MAX_COMPRESSION_TAR=9
+readonly MIN_LENGTH=3
 
 declare -a OPTIONS=("Archive" "Extract")
 declare -a ARCHIVE_OPTIONS=("ZIP" "RAR" "TAR")
 
 type=ARCHIVE_OPTIONS[0]
-declare -a files=()
+files=""
 password=""
 compression=0
 name=""
@@ -33,9 +33,9 @@ function select_items() {
 
     if [ $? == 0 ]; then
         IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$locFiles"
+        files=$locFiles
         echo "Selected files:"
         for file in "${fileArray[@]}"; do
-            files+=($file)
             echo "$file"
         done
     else
@@ -62,11 +62,12 @@ function password_setup() {
             exit
         fi
 
-        if [ ${#name} -lt $MIN_LENGTH ]; then
+        if [ ${#password} -lt $MIN_LENGTH ]; then
             echo "Password have to be at least ${MIN_LENGTH} characters."
             password_setup
         fi
 
+        password=$(echo "$password" | sed 's/[^a-zA-Z0-9_.-]//g')
         echo "Password: YES (${password})"
     fi
 }
@@ -84,8 +85,11 @@ function compression_level() {
             max_compression=${MAX_COMPRESSION_RAR}
         elif [ "$type" == "ZIP" ]; then
             max_compression=${MAX_COMPRESSION_ZIP}
+        elif [ "$type" == "TAR" ]; then
+            max_compression=${MAX_COMPRESSION_TAR}
         fi
-        compression=$(zenity --scale --title="$TITLE" --text="Compression level" --value=0 --min-value=0 --max-value=${max_compression})
+
+        compression=$(zenity --scale --title="$TITLE" --text="Compression level for $type archive" --value=0 --min-value=0 --max-value=${max_compression})
 
         if [ $? != 0 ]; then
             exit
@@ -112,7 +116,44 @@ function name_setup() {
 
 function archive_items() {
     if zenity --question --title="$TITLE" --text="Is printed data in terminal right?"; then
-        echo "1"
+        local command=""
+        IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$files"
+        case "$type" in
+            TAR)
+                command="tar -cf ${name}.tar.gz"
+                for file in "${fileArray[@]}"; do
+                    command+=" -C $(dirname "$file") $(basename "$file")"
+                done
+                ;;
+            ZIP)
+                command="zip -r"
+                if [ -n "$password" ]; then
+                    command+=" -P ${password}"
+                fi
+                if [ -n "$compression" ]; then
+                    command+=" -${compression}"
+                fi
+                command+=" ${name}.zip"
+                for file in "${fileArray[@]}"; do
+                    command+=" ${file}"
+                done
+                ;;
+            RAR)
+                command="rar a"
+                if [ -n "$password" ]; then
+                    command+=" -p$password"
+                fi
+                if [ -n "$compression" ]; then
+                    command+=" -m${compression}"
+                fi
+                command+=" ${name}.rar"
+                for file in "${fileArray[@]}"; do
+                    command+=" ${file}"
+                done
+                ;;
+        esac
+        echo "$command"
+        eval "$command"
     else
         echo "Declined creating archive";
         exit
@@ -137,6 +178,7 @@ while true; do
         fi
         name_setup
         archive_items
+        exit
     else
         echo "You selected Extract."
         local file=$(zenity --file-selection --separator="$FILE_SEPARATOR" --title="$TITLE")
@@ -144,6 +186,7 @@ while true; do
             echo "Selected archive: ${file}"
         else
             zenity --info --text="$NO_FILES" --title="$TITLE"
-        fi  
+        fi
+        exit
     fi
 done
