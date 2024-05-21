@@ -3,12 +3,12 @@
 # Created On        : 17.05.2024
 # Last Modified By  : Kacper Doga [@varev-dev]
 # Last Modified     : 21.05.2024
-# Version           : 1.0.2
+# Version           : 1.0.6
 #
 # Description       : Simple archive setuper / archive extractor created using Zenity widgets and Bash language
 #
 # Licensed under GPL (/usr/share/common-licenses/GPL for more details
-# or contact the Free Software Foundation for a copy
+# or contact the Free Software Foundation for a copy)
 
 function help() {
     echo "Usage: $(basename "$0") [options]"
@@ -46,7 +46,6 @@ while getopts ":hv" opt; do
     esac
 done
 
-
 readonly TITLE="File Archiver"
 readonly NO_FILES="No files were selected"
 readonly FILE_SEPARATOR=","
@@ -60,6 +59,7 @@ declare -a ARCHIVE_OPTIONS=("ZIP" "RAR" "GZ")
 
 type=ARCHIVE_OPTIONS[0]
 files=""
+meta=false
 password=""
 target=""
 compression=0
@@ -110,9 +110,12 @@ function password_setup() {
     fi
 }
 
-function metadata_cleanup() {
+function metadata_ask() {
     if zenity --question --title="$TITLE" --text="Do you want to clear metadata from the archive?"; then
+        meta=true
         echo "Metadata: REMOVED"
+    else
+        meta=false
     fi;
 }
 
@@ -152,10 +155,32 @@ function name_setup() {
     echo "Name: ${name}"
 }
 
+function clear_metadata() {
+    IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$files"
+
+    for file in "${fileArray[@]}"; do
+        if [ -f "$file" ]; then
+            mat2 "$file"
+            if [ $? -eq 0 ]; then
+                echo "Successfully cleaned metadata from $file"
+            else
+                echo "Failed to clean metadata from $file"
+            fi
+        else
+            echo "File not found: $file"
+        fi
+    done
+}
+
 function archive_items() {
     if zenity --question --title="$TITLE" --text="Is printed data in terminal right?"; then
         local command=""
         IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$files"
+
+        if [ "$meta" == true ]; then
+            clear_metadata
+        fi
+
         case "$type" in
             GZ)
                 command="tar -cf ${name}.tar.gz"
@@ -260,7 +285,7 @@ while true; do
         echo "You selected Archive."
         select_items
         select_type
-        metadata_cleanup
+        metadata_ask
         if [ "$type" != "GZ" ]; then
             compression_level
             password_setup
