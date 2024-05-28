@@ -1,9 +1,9 @@
-#!bin/bash
+#!usr/bin/bash
 # Author            : Kacper Doga [@varev-dev]
 # Created On        : 17.05.2024
 # Last Modified By  : Kacper Doga [@varev-dev]
 # Last Modified     : 21.05.2024
-# Version           : 1.0.6
+# Version           : 1.0.7
 #
 # Description       : Simple archive setuper / archive extractor created using Zenity widgets and Bash language
 #
@@ -12,6 +12,10 @@
 
 function help() {
     echo "Usage: $(basename "$0") [options]"
+    echo "";
+    echo "Read, fill, select and give answers to questions using Zenity Widgets."
+    echo "Supported formats: ZIP, RAR, GZ"
+    echo "";
     echo "Options:"
     echo "      -h  Print help"
     echo "      -v  Print version info"
@@ -65,6 +69,8 @@ target=""
 compression=0
 name=""
 
+# Function to make user select files from Selector Widget
+# Saves selected into files variable
 function select_items() {
     local locFiles
     locFiles=$(zenity --file-selection --multiple --separator="$FILE_SEPARATOR" --title="$TITLE")
@@ -82,6 +88,7 @@ function select_items() {
     done
 }
 
+# Archive type selection using List widget
 function select_type() {
     type=$(zenity --text "Choose archive type" --list --column=Menu "${ARCHIVE_OPTIONS[@]}" --title="$TITLE");
 
@@ -92,6 +99,8 @@ function select_type() {
     echo "Type: ${type}"
 }
 
+# Function asks user if password is wanted
+# If wanted then reads password from Password Widget
 function password_setup() {
     if zenity --question --title="$TITLE" --text="Do you want to create password for archive?"; then
         password=$(zenity --password --title="$TITLE" --text="Enter password for archive")
@@ -105,11 +114,13 @@ function password_setup() {
             password_setup
         fi
 
+        # check pattern (needed to check if password is not trying to inject command)
         password=$(echo "$password" | sed 's/[^a-zA-Z0-9_.-]//g')
         echo "Password: YES (${password})"
     fi
 }
 
+# Asks user if he wants to remove metadata from files
 function metadata_ask() {
     if zenity --question --title="$TITLE" --text="Do you want to clear metadata from the archive?"; then
         meta=true
@@ -119,6 +130,8 @@ function metadata_ask() {
     fi;
 }
 
+# Ask if custom compression is wanted
+# If wanted then ask user to choose from Scale widget in range
 function compression_level() {
     if zenity --question --title="$TITLE" --text="Do you want custom compression level?"; then
         local max_compression=0
@@ -139,6 +152,7 @@ function compression_level() {
     fi
 }
 
+# Asks for archive name
 function name_setup() {
     name=$(zenity --entry --title="$TITLE" --text="Enter archive name:")
 
@@ -151,10 +165,12 @@ function name_setup() {
         name_setup
     fi
 
+    # check name for command injection
     name=$(echo "$name" | sed 's/[^a-zA-Z0-9_.-]//g')
     echo "Name: ${name}"
 }
 
+# Clears metadata for each file in files and prints its status
 function clear_metadata() {
     IFS="$FILE_SEPARATOR" read -r -a fileArray <<< "$files"
 
@@ -172,6 +188,7 @@ function clear_metadata() {
     done
 }
 
+# Main archive function, building command and execute based on selected type
 function archive_items() {
     if zenity --question --title="$TITLE" --text="Is printed data in terminal right?"; then
         local command=""
@@ -222,6 +239,7 @@ function archive_items() {
     fi
 }
 
+# Asks user to select archive file using FileSelection widget
 function select_archive() {
     files=$(zenity --file-selection --title="$TITLE")
 
@@ -250,6 +268,7 @@ function select_archive() {
     fi
 }
 
+# Asks user to select directory using FileSelection(directory) widget
 function select_target() {
     target=$(zenity --file-selection --directory --title="$TITLE" --text="Choose target directory")
 
@@ -258,6 +277,7 @@ function select_target() {
     fi
 }
 
+# Extracts archive into the target directory
 function extract_archive() {
     case "$type" in
         "ZIP")
@@ -274,6 +294,7 @@ function extract_archive() {
     eval "$command"
 }
 
+# Main infinity loop that brings function calls together
 while true; do
     selection=$(zenity --text "Choose option" --list --column=Menu "${OPTIONS[@]}" --title="$TITLE");
 
@@ -292,12 +313,10 @@ while true; do
         fi
         name_setup
         archive_items
-        exit
     else
         echo "You selected Extract."
         select_archive
         select_target
         extract_archive
-        exit
     fi
 done

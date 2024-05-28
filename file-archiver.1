@@ -1,0 +1,45 @@
+.\" Manpage for file-archiver
+.TH file-archiver 1 "26 May 2024" "1.0.7" "file-archiver man page"
+.SH NAME
+file-archiver - a script for packing and unpacking files using Zenity widgets
+.SH SYNOPSIS
+file-archiver
+[OPTIONS]
+.SH DESCRIPTION
+file-archiver is a script that allows users to pack files into archives with various extensions and unpack them using Zenity widgets. The graphical interface is implemented to provide a simpler and clearer handling of the entire application.
+.PP
+After calling script you are going to be asked several questions to archive or extract files with served options.
+.PP
+This script offers the following features:
+.IP
+\(bu Handling multiple types of archives
+.IP
+\(bu Advanced file selection
+.IP
+\(bu Compression of archive size
+.IP
+\(bu Managing metadata
+.IP
+\(bu Setting password for archive
+.PP
+Tools used:
+.IP
+- Bash
+.IP
+- Zenity
+.IP
+- Archive handling packages (RAR, ZIP, TAR, GZIP)
+.SH OPTIONS
+.TP
+\fB-h\fR
+Display help message and exit.
+.TP
+\fB-v\fR
+Display version and exit.
+.IP
+.SH BUGS
+No known bugs.
+.SH AUTHOR
+Written by Kacper Doga [@varev-dev]
+.SH REPORTING BUGS
+https://github.com/varev-dev/file-archiver/issues
